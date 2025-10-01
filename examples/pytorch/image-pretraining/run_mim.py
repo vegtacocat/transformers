@@ -111,6 +111,14 @@ class DataTrainingArguments:
         },
     )
 
+    check_min_version("4.57.0.dev0")
+
+require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/image-pretraining/requirements.txt")
+
+MODEL_CONFIG_CLASSES = list(MODEL_FOR_MASKED_IMAGE_MODELING_MAPPING.keys())
+MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+
+
     def __post_init__(self):
         data_files = {}
         if self.train_dir is not None:
@@ -120,22 +128,6 @@ class DataTrainingArguments:
         self.data_files = data_files if data_files else None
 
 
-@dataclass
-class ModelArguments:
-    """
-    Arguments pertaining to which model/config/image processor we are going to pre-train.
-    """
-
-    model_name_or_path: str = field(
-        default=None,
-        metadata={
-            "help": (
-                "The model checkpoint for weights initialization. Can be a local path to a pytorch_model.bin or a "
-                "checkpoint identifier on the hub. "
-                "Don't set if you want to train a model from scratch."
-            )
-        },
-    )
     model_type: Optional[str] = field(
         default=None,
         metadata={"help": "If training from scratch, pass a model type from the list: " + ", ".join(MODEL_TYPES)},
@@ -268,11 +260,12 @@ def main():
         # The default of training_args.log_level is passive, so we set log level at info here to have that default.
         transformers.utils.logging.set_verbosity_info()
 
-    log_level = training_args.get_process_log_level()
-    logger.setLevel(log_level)
-    transformers.utils.logging.set_verbosity(log_level)
-    transformers.utils.logging.enable_default_handler()
-    transformers.utils.logging.enable_explicit_format()
+check_min_version("4.57.0.dev0")
+
+require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/image-pretraining/requirements.txt")
+
+MODEL_CONFIG_CLASSES = list(MODEL_FOR_MASKED_IMAGE_MODELING_MAPPING.keys())
+MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
     # Log on each process the small summary:
     logger.warning(
@@ -313,16 +306,7 @@ def main():
         ds["train"] = split["train"]
         ds["validation"] = split["test"]
 
-    # Create config
-    # Distributed training:
-    # The .from_pretrained methods guarantee that only one local process can concurrently
-    # download model & vocab.
-    config_kwargs = {
-        "cache_dir": model_args.cache_dir,
-        "revision": model_args.model_revision,
-        "token": model_args.token,
-        "trust_remote_code": model_args.trust_remote_code,
-    }
+
     if model_args.config_name_or_path:
         config = AutoConfig.from_pretrained(model_args.config_name_or_path, **config_kwargs)
     elif model_args.model_name_or_path:
@@ -365,17 +349,16 @@ def main():
         }
         image_processor = IMAGE_PROCESSOR_TYPES[model_args.model_type][-1]()
 
-    # create model
-    if model_args.model_name_or_path:
-        model = AutoModelForMaskedImageModeling.from_pretrained(
-            model_args.model_name_or_path,
-            from_tf=bool(".ckpt" in model_args.model_name_or_path),
-            config=config,
-            cache_dir=model_args.cache_dir,
-            revision=model_args.model_revision,
-            token=model_args.token,
-            trust_remote_code=model_args.trust_remote_code,
-        )
+    # Create config
+    # Distributed training:
+    # The .from_pretrained methods guarantee that only one local process can concurrently
+    # download model & vocab.
+    config_kwargs = {
+        "cache_dir": model_args.cache_dir,
+        "revision": model_args.model_revision,
+        "token": model_args.token,
+        "trust_remote_code": model_args.trust_remote_code,
+    }
     else:
         logger.info("Training new model from scratch")
         model = AutoModelForMaskedImageModeling.from_config(config, trust_remote_code=model_args.trust_remote_code)
